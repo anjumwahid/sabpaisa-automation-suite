@@ -1,0 +1,34 @@
+image: mcr.microsoft.com/playwright/python:v1.49.1-noble
+
+pipelines:
+  default:
+    - step:
+        name: Run Regression Tests
+        caches:
+          - pip
+        script:
+          - pip install -r requirements.txt
+          - pytest tests/test_regression_suite.py --alluredir=allure-results -v
+        artifacts:
+          - allure-results/**
+          - screenshots/**
+
+  custom:
+    smoke-test:
+      - step:
+          name: Smoke Test (E2E only)
+          script:
+            - pip install -r requirements.txt
+            - pytest tests/test_regression_suite.py -k "R9" --alluredir=allure-results -v
+          artifacts:
+            - allure-results/**
+
+    full-regression:
+      - step:
+          name: Full Regression
+          script:
+            - pip install -r requirements.txt
+            - pytest tests/test_regression_suite.py --alluredir=allure-results -v
+          artifacts:
+            - allure-results/**
+            - screenshots/**

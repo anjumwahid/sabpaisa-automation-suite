@@ -1,0 +1,9 @@
+{
+    "base_url": "https://dgrdfsk1dqpwl.cloudfront.net/client-test/configure.html",
+    "environment": "Staging",
+    "browser": "chromium",
+    "headless": false,
+    "slow_mo": 500,
+    "viewport": { "width": 1280, "height": 720 },
+    "default_timeout": 15000
+}

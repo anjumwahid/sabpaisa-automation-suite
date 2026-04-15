@@ -1,0 +1,24 @@
+{
+    "merchant_id": "UTTA99",
+    "customer": {
+        "customer_id": "Test",
+        "name": "test",
+        "email": "test@gmail.com",
+        "phone": "6477834567",
+        "amount": "1",
+        "description": "Test Product"
+    },
+    "payment": {
+        "bank_search": "eq",
+        "bank_name": "Equitas Bank"
+    },
+    "card": {
+        "card_number": "4111111111111111",
+        "holder": "Test User",
+        "expiry": "12/28",
+        "cvv": "123"
+    },
+    "upi": {
+        "upi_id": "test@ybl"
+    }
+}

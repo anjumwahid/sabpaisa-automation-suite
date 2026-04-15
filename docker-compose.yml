@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  tests:
+    build: .
+    environment:
+      - ENV=staging
+      - HEADLESS=true
+    volumes:
+      - ./allure-results:/app/allure-results
+      - ./screenshots:/app/screenshots
+    command: pytest tests/test_regression_suite.py --alluredir=allure-results -v
