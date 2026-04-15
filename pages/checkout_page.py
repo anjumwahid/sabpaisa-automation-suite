@@ -39,31 +39,32 @@ class CheckoutPage(BasePage):
     #  LOCATORS — UPI / QR
     # ══════════════════════════════════════════════
 
-    TAB_SCAN_QR = {"text": "Scan QR"}
-    TAB_UPI_ID = {"text": "UPI ID"}
-    BTN_GENERATE_QR = {"text": "Generate QR"}
+    BTN_GENERATE_QR = {
+        "xpath": "//button[normalize-space()='Generate QR']",
+        "text": "Generate QR",
+    }
 
     # ══════════════════════════════════════════════
-    #  LOCATORS — Card Form (secure-card-*)
+    #  LOCATORS — Card Form
     # ══════════════════════════════════════════════
 
     INPUT_CARD_NUMBER = {
-        "xpath": "//input[@id='secure-card-number']",
+        "xpath": "//div[@class='flex-1 p-4 overflow-y-auto']//div//input[@id='secure-card-number']",
         "css": "input#secure-card-number",
     }
 
     INPUT_CARD_HOLDER = {
-        "xpath": "//input[@id='secure-card-name']",
+        "xpath": "//div[@class='flex-1 p-4 overflow-y-auto']//div//input[@id='secure-card-name']",
         "css": "input#secure-card-name",
     }
 
     INPUT_CARD_EXPIRY = {
-        "xpath": "//input[@id='secure-card-expiry']",
+        "xpath": "//div[@class='flex-1 p-4 overflow-y-auto']//div//input[@id='secure-card-expiry']",
         "css": "input#secure-card-expiry",
     }
 
     INPUT_CARD_CVV = {
-        "xpath": "//input[@id='secure-card-cvv']",
+        "xpath": "//div[@class='flex-1 p-4 overflow-y-auto']//div//input[@id='secure-card-cvv']",
         "css": "input#secure-card-cvv",
     }
 
@@ -88,12 +89,12 @@ class CheckoutPage(BasePage):
     # ══════════════════════════════════════════════
 
     IMG_PHONEPE = {
-        "xpath": "//img[@alt='Phonepe']",
+        "xpath": "//div[@class='flex-1 p-4 overflow-y-auto']//div//img[@alt='Phonepe']",
         "css": "img[alt='Phonepe']",
     }
 
     IMG_AMAZONPAY = {
-        "xpath": "//img[@alt='AMAZONPAY']",
+        "xpath": "//div[@class='flex-1 p-4 overflow-y-auto']//div//img[@alt='AMAZONPAY']",
         "css": "img[alt='AMAZONPAY']",
     }
 
@@ -127,20 +128,28 @@ class CheckoutPage(BasePage):
     # ══════════════════════════════════════════════
 
     BTN_CASH = {
-        "xpath": "//p[normalize-space()='Cash']",
+        "xpath": "//div[@class='flex-1 p-4 overflow-y-auto']//div//p[@class='text-sm font-bold leading-tight text-emerald-800'][normalize-space()='Cash']",
         "text": "Cash",
     }
 
     IMG_BANK_OF_INDIA = {
-        "xpath": "//img[contains(@alt,'Bank Of India')]",
+        "xpath": "//div[@class='flex-1 p-4 overflow-y-auto']//div//img[contains(@alt,'Bank Of India')]",
         "css": "img[alt*='Bank Of India']",
     }
 
     # ══════════════════════════════════════════════
-    #  LOCATORS — Common
+    #  LOCATORS — Pay / Proceed Button + Amount
     # ══════════════════════════════════════════════
 
-    BTN_PAY = {"text": "Pay"}
+    BTN_PAY_PROCEED = {
+        "xpath": "//button[@class='w-full py-4 rounded-lg font-bold text-base flex items-center justify-center gap-2 transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2']",
+        "text": "Pay",
+    }
+
+    SPAN_AMOUNT = {
+        "xpath": "//span[@class='tabular-nums']",
+        "css": "span.tabular-nums",
+    }
 
     # ══════════════════════════════════════════════
     #  ACTIONS — Common
@@ -187,14 +196,9 @@ class CheckoutPage(BasePage):
     #  ACTIONS — UPI / QR
     # ══════════════════════════════════════════════
 
-    @allure.step("Click Scan QR tab")
-    def click_scan_qr(self):
-        self.page.locator("button", has_text="Scan QR").first.click()
-        self.wait(2000)
-
     @allure.step("Click Generate QR")
     def click_generate_qr(self):
-        self.page.locator("button", has_text="Generate QR").first.click()
+        self.engine.click(self.BTN_GENERATE_QR, timeout=10000)
         self.wait(3000)
 
     # ══════════════════════════════════════════════
@@ -217,10 +221,18 @@ class CheckoutPage(BasePage):
     def enter_card_cvv(self, value: str):
         self.engine.fill(self.INPUT_CARD_CVV, value, timeout=10000)
 
+    # ══════════════════════════════════════════════
+    #  ACTIONS — Pay / Proceed Button
+    # ══════════════════════════════════════════════
+
     @allure.step("Click Pay button")
     def click_pay(self):
-        self.page.locator("button", has_text="Pay").first.click()
+        self.engine.click(self.BTN_PAY_PROCEED, timeout=10000)
         self.wait(3000)
+
+    @allure.step("Get payment amount from Pay button")
+    def get_pay_amount(self) -> str:
+        return self.engine.get_text(self.SPAN_AMOUNT, timeout=5000)
 
     # ══════════════════════════════════════════════
     #  ACTIONS — Netbanking
@@ -234,6 +246,7 @@ class CheckoutPage(BasePage):
     @allure.step("Select Equitas Bank")
     def select_equitas_bank(self):
         self.engine.click(self.IMG_EQUITAS_BANK, timeout=20000)
+        self.wait(1000)
 
     @allure.step("Click Show all banks")
     def click_show_all_banks(self):
@@ -285,7 +298,7 @@ class CheckoutPage(BasePage):
 
     @allure.step("Select Cash option")
     def select_cash(self):
-        self.page.locator("button", has_text="Cash").first.click()
+        self.engine.click(self.BTN_CASH, timeout=10000)
         self.wait(1000)
 
     @allure.step("Select Bank Of India")
@@ -331,11 +344,7 @@ class CheckoutPage(BasePage):
 
     @allure.step("Check if Pay button is visible")
     def is_pay_visible(self) -> bool:
-        try:
-            self.page.locator("button", has_text="Pay").first.wait_for(state="visible", timeout=5000)
-            return True
-        except Exception:
-            return False
+        return self.engine.is_visible(self.BTN_PAY_PROCEED, timeout=5000)
 
     @allure.step("Check if wallet grid is visible")
     def is_wallet_grid_visible(self) -> bool:
@@ -359,7 +368,6 @@ class CheckoutPage(BasePage):
 
     @allure.step("Get all bank names from Netbanking")
     def get_all_bank_names(self) -> list:
-        """Returns list of all bank alt texts visible in Netbanking section."""
         bank_imgs = self.page.locator("img[alt*='Bank'], img[alt*='bank']").all()
         names = []
         for img in bank_imgs:
@@ -373,13 +381,11 @@ class CheckoutPage(BasePage):
 
     @allure.step("Click bank by name: {bank_name}")
     def click_bank_by_name(self, bank_name: str):
-        """Click a bank image by its alt text."""
         self.page.locator(f"img[alt='{bank_name}']").first.click()
         self.wait(1000)
 
     @allure.step("Get all wallet names")
     def get_all_wallet_names(self) -> list:
-        """Returns list of all wallet alt texts."""
         wallet_imgs = self.page.locator(
             "img[alt='Phonepe'], img[alt='AMAZONPAY'], img[alt='MOBIKWIK'], "
             "img[alt='Airtel money'], img[alt*='reeCharge'], img[alt*='Jio'], img[alt*='OLA']"
@@ -402,7 +408,6 @@ class CheckoutPage(BasePage):
     def complete_upi_qr_flow(self):
         self.wait_for_checkout_load()
         self.select_upi()
-        self.click_scan_qr()
         self.click_generate_qr()
 
     @allure.step("Complete Cards flow")
@@ -414,18 +419,20 @@ class CheckoutPage(BasePage):
         self.enter_card_expiry(expiry)
         self.enter_card_cvv(cvv)
 
-    @allure.step("Complete Netbanking flow")
+    @allure.step("Complete Netbanking flow with Pay")
     def complete_netbanking_flow(self, bank_search="eq"):
         self.wait_for_checkout_load()
         self.select_netbanking()
         self.search_bank(bank_search)
         self.select_equitas_bank()
+        self.click_pay()
 
-    @allure.step("Complete Wallet flow - PhonePe")
+    @allure.step("Complete Wallet PhonePe flow with Pay")
     def complete_wallet_phonepe_flow(self):
         self.wait_for_checkout_load()
         self.select_wallets()
         self.select_phonepe()
+        self.click_pay()
 
     @allure.step("Complete Offline Cash flow")
     def complete_offline_cash_flow(self):

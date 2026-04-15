@@ -205,7 +205,6 @@ class TestR3UPI:
     def test_generate_qr(self, page):
         co = goto_checkout(page)
         co.select_upi()
-        co.click_scan_qr()
         co.click_generate_qr()
         assert co.is_qr_visible()
 
@@ -533,14 +532,22 @@ class TestR9E2ESmoke:
 @allure.feature("R10 - Full Sequential Flow")
 class TestR10FullSequential:
 
-    @allure.title("R10.1: ALL BANKS one by one → then Cards → UPI → Wallets → Offline")
+    @allure.title("R10.1: UPI → Netbanking (ALL banks + Equitas Pay) → Wallets (PhonePe Pay) → Offline → Cards")
     @allure.severity(allure.severity_level.BLOCKER)
-    def test_all_banks_then_all_modes(self, page):
-        """Single session: every bank + every mode."""
+    def test_full_e2e_all_modes_sequential(self, page):
+        """Single session: UPI → Netbanking (all banks) → Wallets → Offline → Cards."""
         co = goto_checkout(page)
 
-        # ── NETBANKING: Every bank ──
-        with allure.step("NETBANKING — Click every bank"):
+        # ── STEP 1: UPI ──
+        with allure.step("STEP 1: UPI — Generate QR"):
+            co.select_upi()
+            co.click_scan_qr()
+            co.click_generate_qr()
+            assert co.is_qr_visible(), "QR should be visible"
+            allure.attach("UPI QR generated", name="UPI_Result", attachment_type=allure.attachment_type.TEXT)
+
+        # ── STEP 2: NETBANKING — All Banks + Equitas Pay ──
+        with allure.step("STEP 2: NETBANKING — Click every bank"):
             co.select_netbanking()
             co.click_show_all_banks()
             co.wait(3000)
@@ -558,27 +565,18 @@ class TestR10FullSequential:
                 except Exception as e:
                     failed.append(f"{bank}: {str(e)[:80]}")
             allure.attach(f"Passed: {len(passed)}/{len(banks)}\nFailed:\n" + "\n".join(failed or ["None"]),
-                          name="Netbanking Summary", attachment_type=allure.attachment_type.TEXT)
+                          name="Netbanking_All_Banks", attachment_type=allure.attachment_type.TEXT)
 
-        # ── CARDS ──
-        with allure.step("CARDS — Fill details"):
-            co.select_cards()
-            c = _d()["card"]
-            co.enter_card_number(c["card_number"])
-            co.enter_card_holder(c["holder"])
-            co.enter_card_expiry(c["expiry"])
-            co.enter_card_cvv(c["cvv"])
-            assert co.is_pay_visible()
+        with allure.step("STEP 2b: NETBANKING — Search Equitas + Click Pay"):
+            co.select_netbanking()
+            co.search_bank("eq")
+            co.select_equitas_bank()
+            co.click_pay()
+            co.wait(2000)
+            allure.attach("Equitas Bank selected + Pay clicked", name="Netbanking_Pay", attachment_type=allure.attachment_type.TEXT)
 
-        # ── UPI ──
-        with allure.step("UPI — Generate QR"):
-            co.select_upi()
-            co.click_scan_qr()
-            co.click_generate_qr()
-            assert co.is_qr_visible()
-
-        # ── WALLETS: Every wallet ──
-        with allure.step("WALLETS — Click each wallet"):
+        # ── STEP 3: WALLETS — PhonePe + Pay ──
+        with allure.step("STEP 3: WALLETS — All wallets + PhonePe Pay"):
             wallet_methods = [
                 ("PhonePe", co.select_phonepe),
                 ("AmazonPay", co.select_amazonpay),
@@ -596,21 +594,42 @@ class TestR10FullSequential:
                     w_results.append(f"{name}: PASS")
                 except Exception:
                     w_results.append(f"{name}: FAIL")
-            allure.attach("\n".join(w_results), name="Wallets Summary", attachment_type=allure.attachment_type.TEXT)
+            allure.attach("\n".join(w_results), name="Wallets_All", attachment_type=allure.attachment_type.TEXT)
 
-        # ── OFFLINE ──
-        with allure.step("OFFLINE — Cash + Bank Of India"):
+        with allure.step("STEP 3b: WALLETS — PhonePe + Click Pay"):
+            co.select_wallets()
+            co.select_phonepe()
+            co.click_pay()
+            co.wait(2000)
+            allure.attach("PhonePe selected + Pay clicked", name="Wallet_Pay", attachment_type=allure.attachment_type.TEXT)
+
+        # ── STEP 4: OFFLINE ──
+        with allure.step("STEP 4: OFFLINE — Cash + Bank Of India"):
             co.select_offline()
             co.select_cash()
+            allure.attach("Cash selected", name="Offline_Cash", attachment_type=allure.attachment_type.TEXT)
             co.select_offline()
             co.select_bank_of_india()
+            allure.attach("Bank Of India selected", name="Offline_BOI", attachment_type=allure.attachment_type.TEXT)
+
+        # ── STEP 5: CARDS ──
+        with allure.step("STEP 5: CARDS — Fill details"):
+            co.select_cards()
+            c = _d()["card"]
+            co.enter_card_number(c["card_number"])
+            co.enter_card_holder(c["holder"])
+            co.enter_card_expiry(c["expiry"])
+            co.enter_card_cvv(c["cvv"])
+            assert co.is_pay_visible(), "Pay button should be visible"
+            allure.attach("Card details filled", name="Cards_Result", attachment_type=allure.attachment_type.TEXT)
 
         # ── SUMMARY ──
         with allure.step("FINAL SUMMARY"):
             allure.attach(
-                f"Netbanking: {len(passed)}/{len(banks)} banks\n"
-                f"Cards: Filled\nUPI: QR Generated\n"
-                f"Wallets: {sum(1 for r in w_results if 'PASS' in r)}/{len(w_results)}\n"
-                f"Offline: Cash + Bank Of India",
+                f"1. UPI: QR Generated\n"
+                f"2. Netbanking: {len(passed)}/{len(banks)} banks + Equitas Pay clicked\n"
+                f"3. Wallets: {sum(1 for r in w_results if 'PASS' in r)}/{len(w_results)} + PhonePe Pay clicked\n"
+                f"4. Offline: Cash + Bank Of India\n"
+                f"5. Cards: Details filled",
                 name="REGRESSION COMPLETE", attachment_type=allure.attachment_type.TEXT,
             )
