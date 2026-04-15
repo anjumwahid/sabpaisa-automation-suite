@@ -1,9 +1,5 @@
 pipeline {
-    agent {
-        docker {
-            image 'mcr.microsoft.com/playwright/python:v1.49.1-noble'
-        }
-    }
+    agent any
 
     environment {
         HEADLESS = 'true'
@@ -14,13 +10,14 @@ pipeline {
     stages {
         stage('Install Dependencies') {
             steps {
-                sh 'pip install -r requirements.txt'
+                bat 'pip install -r requirements.txt'
+                bat 'playwright install chromium'
             }
         }
 
         stage('Run Regression Tests') {
             steps {
-                sh 'pytest tests/test_regression_suite.py --alluredir=allure-results -v'
+                bat 'pytest tests/test_regression_suite.py --alluredir=allure-results -v'
             }
         }
     }
@@ -28,7 +25,6 @@ pipeline {
     post {
         always {
             allure results: [[path: 'allure-results']]
-            archiveArtifacts artifacts: 'screenshots/*.png', allowEmptyArchive: true
         }
     }
 }
