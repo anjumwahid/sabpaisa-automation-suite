@@ -7,7 +7,12 @@ def _load(filename):
         return json.load(f)
 
 def get_checkout_data():
-    return _load("checkout_data.json")
+    data = _load("checkout_data.json")
+    # Env var override (for parallel batch runs)
+    override = os.environ.get("MERCHANT_ID_OVERRIDE")
+    if override:
+        data["merchant_id"] = override
+    return data
 
 def get_customer_data():
     return get_checkout_data()["customer"]

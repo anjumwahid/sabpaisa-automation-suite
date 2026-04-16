@@ -17,3 +17,6 @@ HEADLESS        = os.getenv("HEADLESS", str(_cfg["headless"])).lower() == "true"
 SLOW_MO         = int(os.getenv("SLOW_MO", str(_cfg["slow_mo"])))
 VIEWPORT        = _cfg["viewport"]
 DEFAULT_TIMEOUT = int(os.getenv("TIMEOUT", str(_cfg["default_timeout"])))
+
+# For parallel batch runner
+MERCHANT_ID_OVERRIDE = os.getenv("MERCHANT_ID_OVERRIDE", None)

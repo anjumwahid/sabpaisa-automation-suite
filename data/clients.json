@@ -1,0 +1,5 @@
+[
+    {"merchant_id": "UTTA99", "environment": "Staging"},
+    {"merchant_id": "SQUA102", "environment": "Staging"},
+    {"merchant_id": "AJME", "environment": "Production"}
+]
