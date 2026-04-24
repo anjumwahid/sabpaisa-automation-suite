@@ -17,6 +17,7 @@ Run:    pytest tests/test_regression_suite.py --alluredir=allure-results --heade
 Report: allure serve allure-results
 """
 
+import os
 import allure
 import pytest
 from pages import ConfigurePage, CustomerPage, CheckoutPage
@@ -26,6 +27,17 @@ from data.data_provider import get_checkout_data, get_customer_data, get_card_da
 # ══════════════════════════════════════════════
 #  HELPERS
 # ══════════════════════════════════════════════
+
+def _dynamic_client() -> str:
+    """Client code used by the dynamic per-bank / per-wallet tests.
+    Defaults to CHIN36 but can be overridden via MERCHANT_ID_OVERRIDE env var,
+    or DYNAMIC_CLIENT env var (explicit override for the dynamic tests only).
+    So you can run SUBI79 via:
+        MERCHANT_ID_OVERRIDE=SUBI79 pytest ...
+    or
+        DYNAMIC_CLIENT=SUBI79 pytest ...
+    or via run_parallel_clients.py --clients SUBI79 (which sets MERCHANT_ID_OVERRIDE)."""
+    return os.environ.get("DYNAMIC_CLIENT") or os.environ.get("MERCHANT_ID_OVERRIDE") or "CHIN36"
 
 DATA = None
 
@@ -485,37 +497,36 @@ class TestR5Netbanking:
             allure.attach(f"Cancel click failed: {str(e)[:120]}",
                           name="Cancel", attachment_type=allure.attachment_type.TEXT)
 
-    @allure.title("R5.11: Netbanking per-bank complete flow (dynamic, fresh session per bank) (CHIN36)")
+    @allure.title("R5.11: Netbanking per-bank complete flow (dynamic, fresh session per bank)")
     @allure.severity(allure.severity_level.CRITICAL)
     def test_netbanking_per_bank_flow(self, page):
-        """Same pattern as R6.3 but for Netbanking popular-grid banks.
-        Fresh session per bank: Configure CHIN36 → customer form → checkout
+        """Fresh session per bank: Configure <client> → customer form → checkout
         → Netbanking → click bank → Pay → wait for bank gateway → verify
-        real page loaded. PASS if URL changed + not chrome-error + has
-        content. Discovery is dynamic — if CHIN36 offers 4 popular banks
-        we run 4, if 7 then 7."""
+        real page loaded. Client is picked from DYNAMIC_CLIENT /
+        MERCHANT_ID_OVERRIDE env var (default CHIN36)."""
+        client = _dynamic_client()
 
         # Discovery pass
-        co = goto_checkout_for_client(page, "CHIN36")
+        co = goto_checkout_for_client(page, client)
         co.select_netbanking()
         co.wait(2500)
         bank_alts = co.get_visible_netbanking_popular_alts()
         allure.attach(
-            f"Discovered {len(bank_alts)} popular netbanking bank(s) for CHIN36:\n  - " +
+            f"Discovered {len(bank_alts)} popular netbanking bank(s) for {client}:\n  - " +
             "\n  - ".join(bank_alts or ["(none)"]),
             name="Netbanking banks discovered",
             attachment_type=allure.attachment_type.TEXT,
         )
         if not bank_alts:
-            pytest.skip("No popular banks visible for this client — nothing to test")
+            pytest.skip(f"No popular banks visible for {client} — nothing to test")
 
-        log = [f"Discovered {len(bank_alts)} popular bank(s): {bank_alts}", ""]
+        log = [f"Client: {client}. Discovered {len(bank_alts)} popular bank(s): {bank_alts}", ""]
 
         for idx, alt in enumerate(bank_alts, 1):
             safe = alt.replace(" ", "_").replace("/", "_")
             try:
                 # Fresh full session
-                co = goto_checkout_for_client(page, "CHIN36")
+                co = goto_checkout_for_client(page, client)
                 co.select_netbanking()
                 co.wait(1500)
                 checkout_url = co.get_current_url()
@@ -717,47 +728,35 @@ class TestR6Wallets:
                 results.append(f"{name}: FAIL")
         allure.attach("\n".join(results), name="All Wallets", attachment_type=allure.attachment_type.TEXT)
 
-    @allure.title("R6.3: Per-wallet complete flow (fresh session per wallet, dynamic count) (CHIN36)")
+    @allure.title("R6.3: Per-wallet complete flow (fresh session per wallet, dynamic count)")
     @allure.severity(allure.severity_level.CRITICAL)
     def test_all_wallets_per_flow(self, page):
-        """Fresh full session PER WALLET:
-          1. Configure CHIN36 → customer form → checkout
-          2. Click Wallets → discover the wallet list (only first iteration
-             actually uses the discovery; subsequent iterations use the list
-             discovered in iteration 1)
-          3. For each wallet:
-             - highlight selected (2.5s visible pause)
-             - click Pay (1s pause)
-             - wait for bank page to load (up to 30s)
-             - hold on bank page (6s pause)
-             - screenshot + verdict (real bank page = PASS; chrome-error / blank = FAIL)
-             - close session, restart for next wallet
-          4. When discovered count is exhausted → STOP.
-        The brief UPI tab flash each fresh load is unavoidable — UPI is the
-        checkout's default tab on every load. Wallets is clicked immediately
-        after arrival, so the flash is <1s."""
+        """Fresh full session PER WALLET for whichever client the env var selects
+        (DYNAMIC_CLIENT / MERCHANT_ID_OVERRIDE, default CHIN36).
+        Discover wallets → click each → Pay → wait for bank page → verdict."""
+        client = _dynamic_client()
 
         # ── Discovery pass: one throwaway session to get the wallet list ──
-        co = goto_checkout_for_client(page, "CHIN36")
+        co = goto_checkout_for_client(page, client)
         co.select_wallets()
         co.wait(2000)
         wallet_alts = co.get_visible_wallet_alts()
         allure.attach(
-            f"Discovered {len(wallet_alts)} wallet(s) for CHIN36:\n  - " +
+            f"Discovered {len(wallet_alts)} wallet(s) for {client}:\n  - " +
             "\n  - ".join(wallet_alts or ["(none)"]),
             name="Wallets discovered", attachment_type=allure.attachment_type.TEXT,
         )
         if not wallet_alts:
-            pytest.skip("No wallets visible for this client — nothing to test")
+            pytest.skip(f"No wallets visible for {client} — nothing to test")
 
-        log = [f"Discovered {len(wallet_alts)} wallet(s): {wallet_alts}", ""]
+        log = [f"Client: {client}. Discovered {len(wallet_alts)} wallet(s): {wallet_alts}", ""]
 
         # ── Per-wallet: fresh session → select → Pay → verify → close ──
         for idx, alt in enumerate(wallet_alts, 1):
             safe = alt.replace(" ", "_").replace("/", "_")
             try:
-                # STEP 1: fresh Configure CHIN36 → customer form → checkout
-                co = goto_checkout_for_client(page, "CHIN36")
+                # STEP 1: fresh Configure <client> → customer form → checkout
+                co = goto_checkout_for_client(page, client)
 
                 # STEP 2: click Wallets tab IMMEDIATELY to minimise UPI flash
                 co.select_wallets()
@@ -894,12 +893,13 @@ class TestR7Offline:
             ("IMPS", "SabPaisa Bank (SA)",     lambda c: c.select_imps(), lambda c: c.select_imps_bank_by_badge("SA")),
         ]
 
+        client = _dynamic_client()
         log = []
         for sub_tab, bank_name, tab_fn, bank_fn in scenarios:
             label = f"{sub_tab} -> {bank_name}"
             safe_name = bank_name.replace(" ", "_").replace("(", "").replace(")", "").replace("→", "to")
             try:
-                co = goto_checkout_for_client(page, "CHIN36")
+                co = goto_checkout_for_client(page, client)
                 co.select_offline()
                 tab_fn(co)
                 bank_fn(co)
@@ -945,8 +945,9 @@ class TestR7Offline:
 
         # ── Discovery pass ──
         scenarios = []  # list of (sub_tab, identifier, kind) where kind is "img" or "badge"
+        client = _dynamic_client()
 
-        co = goto_checkout_for_client(page, "CHIN36")
+        co = goto_checkout_for_client(page, client)
         co.select_offline()
         co.wait(1500)
 
@@ -982,23 +983,23 @@ class TestR7Offline:
             pass
 
         allure.attach(
-            f"Discovered {len(scenarios)} offline scenario(s) for CHIN36:\n" +
+            f"Discovered {len(scenarios)} offline scenario(s) for {client}:\n" +
             "\n".join(f"  - {t:4s} -> {n} ({k})" for t, n, k in scenarios)
             if scenarios else "(none discovered)",
             name="Offline scenarios discovered",
             attachment_type=allure.attachment_type.TEXT,
         )
         if not scenarios:
-            pytest.skip("No offline banks discovered for this client — nothing to test")
+            pytest.skip(f"No offline banks discovered for {client} — nothing to test")
 
-        log = [f"Discovered {len(scenarios)} scenario(s)", ""]
+        log = [f"Client: {client}. Discovered {len(scenarios)} scenario(s)", ""]
 
         # ── Per-scenario fresh-session E2E ──
         for idx, (sub_tab, ident, kind) in enumerate(scenarios, 1):
             safe = f"{sub_tab}_{ident.replace(' ', '_').replace('/', '_')}"
             label = f"{sub_tab} -> {ident}"
             try:
-                co = goto_checkout_for_client(page, "CHIN36")
+                co = goto_checkout_for_client(page, client)
                 co.select_offline()
                 co.wait(1200)
 
