@@ -118,6 +118,48 @@ class ConfigurePage(BasePage):
         except Exception:
             return False
 
+    @allure.step("Check if fetch succeeded (API URL populated)")
+    def is_fetch_success(self) -> bool:
+        """A successful fetch populates the Merchant API URL field.
+        Empty URL after fetch → fetch failed or wasn't clicked."""
+        try:
+            el = self.engine.find(self.INPUT_API_URL, timeout=5000)
+            val = (el.input_value() or "").strip()
+            return bool(val)
+        except Exception:
+            return False
+
+    @allure.step("Check if green success indicator / trust badge visible after fetch")
+    def is_green_success_indicator_visible(self) -> bool:
+        """After a good fetch, a green badge/icon typically renders
+        (client-trusted / verified / SabPaisa badge). Covers multiple
+        common class names since the exact one varies."""
+        try:
+            self.page.locator(
+                "[class*='success'], [class*='text-green'], [class*='text-emerald'], "
+                "[class*='bg-green'], [class*='bg-emerald'], "
+                ".fa-check-circle, .fa-cloud, [data-status='success']"
+            ).first.wait_for(state="visible", timeout=3000)
+            return True
+        except Exception:
+            return False
+
+    @allure.step("Get merchant/client name shown after fetch")
+    def get_fetched_client_name(self) -> str:
+        """Returns the merchant display name rendered after fetch
+        (empty string if not found)."""
+        try:
+            # Try common containers: merchant card, client info label, etc.
+            candidates = self.page.locator(
+                "[class*='merchant'], [class*='client-name'], "
+                "[class*='client-display'], [class*='clientInfo']"
+            )
+            if candidates.count() > 0 and candidates.first.is_visible():
+                return candidates.first.inner_text().strip()
+            return ""
+        except Exception:
+            return ""
+
     @allure.step("Get page URL")
     def get_current_url(self) -> str:
         return self.page.url

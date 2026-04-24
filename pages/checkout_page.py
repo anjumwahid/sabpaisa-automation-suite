@@ -77,12 +77,56 @@ class CheckoutPage(BasePage):
         "css": "input[placeholder*='Search banks']",
     }
 
+    # -- Popular banks (image grid) --
+    IMG_KARUR_VYSYA = {
+        "xpath": "//img[@alt='Karur Vysya Bank']",
+        "css": "img[alt='Karur Vysya Bank']",
+    }
+
+    IMG_BOB_CORPORATE = {
+        "xpath": "//img[@alt='Bank of Baroda Net Banking Corporate']",
+        "css": "img[alt='Bank of Baroda Net Banking Corporate']",
+    }
+
+    IMG_BOB_RETAIL = {
+        "xpath": "//img[@alt='Bank of Baroda Net Banking Retail']",
+        "css": "img[alt='Bank of Baroda Net Banking Retail']",
+    }
+
     IMG_EQUITAS_BANK = {
         "xpath": "//img[@alt='Equitas Bank']",
         "css": "img[alt='Equitas Bank']",
     }
 
+    IMG_INDIAN_OVERSEAS = {
+        "xpath": "//img[@alt='Indian Overseas Bank']",
+        "css": "img[alt='Indian Overseas Bank']",
+    }
+
+    IMG_SBI = {
+        "xpath": "//img[@alt='State Bank of India']",
+        "css": "img[alt='State Bank of India']",
+    }
+
+    IMG_IDFC_BANK = {
+        "xpath": "//img[@alt='IDFC FIRST Bank Limited']",
+        "css": "img[alt*='IDFC']",
+    }
+
+    # -- Show/Hide all banks toggle --
     BTN_SHOW_ALL_BANKS = {"text": "Show all banks"}
+
+    BTN_HIDE_ALL_BANKS = {
+        "xpath": "//button[normalize-space()='Hide all banks']",
+        "text": "Hide all banks",
+    }
+
+    # -- Bank gateway "Cancel" dialog --
+    BTN_CANCEL = {
+        "xpath": "//h4[normalize-space()='Cancel']",
+        "css": "h4:has-text('Cancel')",
+        "text": "Cancel",
+    }
 
     # ══════════════════════════════════════════════
     #  LOCATORS — Wallets
@@ -132,9 +176,53 @@ class CheckoutPage(BasePage):
         "text": "Cash",
     }
 
+    BTN_RTGS = {
+        "xpath": "//p[normalize-space()='RTGS']",
+        "text": "RTGS",
+    }
+
+    BTN_IMPS = {
+        "xpath": "//p[normalize-space()='IMPS']",
+        "text": "IMPS",
+    }
+
     IMG_BANK_OF_INDIA = {
         "xpath": "//div[@class='flex-1 p-4 overflow-y-auto']//div//img[contains(@alt,'Bank Of India')]",
         "css": "img[alt*='Bank Of India']",
+    }
+
+    IMG_BANK_OF_INDIA_RETAIL = {
+        "xpath": "//img[@alt='Bank of India Retail']",
+        "css": "img[alt='Bank of India Retail']",
+    }
+
+    IMG_AIRTEL_BANK = {
+        "xpath": "//img[@alt='Airtel Bank']",
+        "css": "img[alt='Airtel Bank']",
+    }
+
+    IMG_FINO_BANK = {
+        "xpath": "//img[contains(@alt,'Fino') or contains(@alt,'FINO')]",
+        "css": "img[alt*='ino']",
+        "text": "FINO",
+    }
+
+    IMG_ICICI_BANK = {
+        "xpath": "//img[contains(@alt,'ICICI')]",
+        "css": "img[alt*='ICICI']",
+        "text": "ICICI Bank",
+    }
+
+    IMG_IDFC_FIRST_RTGS = {
+        "xpath": "//img[@alt='IDFC First Bank RTGS']",
+        "css": "img[alt='IDFC First Bank RTGS']",
+    }
+
+    # "Pay at bank" — shown on offline payment confirmation
+    BTN_PAY_AT_BANK = {
+        "xpath": "//button[.//p[normalize-space()='Pay at bank']]",
+        "css": "button:has(p:text-is('Pay at bank'))",
+        "text": "Pay at bank",
     }
 
     # ══════════════════════════════════════════════
@@ -235,6 +323,139 @@ class CheckoutPage(BasePage):
         return self.engine.get_text(self.SPAN_AMOUNT, timeout=5000)
 
     # ══════════════════════════════════════════════
+    #  Fee Forward / Summary Card validation
+    #  (Checkout card: merchant name, SabPaisa Trusted badge,
+    #   Order Amount, Convenience Charges, Total Amount)
+    # ══════════════════════════════════════════════
+
+    @allure.step("Check if 'Convenience Charges' row is visible (Fee Forward = YES)")
+    def is_convenience_charges_visible(self, timeout: int = 5000) -> bool:
+        try:
+            self.page.get_by_text("Convenience Charges").first.wait_for(
+                state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    @allure.step("Get Convenience Charges amount")
+    def get_convenience_charges_amount(self) -> str:
+        try:
+            row = self.page.locator(
+                "xpath=//*[contains(normalize-space(.),'Convenience Charges')]"
+                "/ancestor-or-self::*[self::div or self::li or self::tr][1]"
+            ).first
+            txt = row.inner_text().strip()
+            return txt
+        except Exception:
+            return ""
+
+    @allure.step("Get Order Amount value")
+    def get_order_amount(self) -> str:
+        try:
+            row = self.page.locator(
+                "xpath=//*[contains(normalize-space(.),'Order Amount')]"
+                "/ancestor-or-self::*[self::div or self::li or self::tr][1]"
+            ).first
+            return row.inner_text().strip()
+        except Exception:
+            return ""
+
+    @allure.step("Get Total Amount value")
+    def get_total_amount(self) -> str:
+        try:
+            row = self.page.locator(
+                "xpath=//*[contains(normalize-space(.),'Total Amount')]"
+                "/ancestor-or-self::*[self::div or self::li or self::tr][1]"
+            ).first
+            return row.inner_text().strip()
+        except Exception:
+            return ""
+
+    @allure.step("Get merchant name shown on checkout summary card")
+    def get_merchant_name_on_checkout(self) -> str:
+        """Returns the merchant display name (e.g. 'Chinmay Bharat Academy')."""
+        try:
+            # Closest heading above the 'SabPaisa Trusted' badge
+            badge = self.page.get_by_text("SabPaisa Trusted").first
+            el = badge.locator(
+                "xpath=preceding::*[self::h1 or self::h2 or self::h3 or "
+                "self::p or self::span][1]"
+            )
+            return el.first.inner_text().strip()
+        except Exception:
+            return ""
+
+    @allure.step("Check SabPaisa Trusted badge visible")
+    def is_sabpaisa_trusted_badge_visible(self) -> bool:
+        try:
+            self.page.get_by_text("SabPaisa Trusted").first.wait_for(
+                state="visible", timeout=5000)
+            return True
+        except Exception:
+            return False
+
+    @staticmethod
+    def _extract_amount(text: str) -> float:
+        """Pull the first numeric amount (float) from a string like
+        'Total Amount  ₹19.9' → 19.9. Returns 0.0 if none."""
+        import re
+        m = re.search(r"[\d,]+\.?\d*", (text or "").replace(",", ""))
+        return float(m.group(0)) if m else 0.0
+
+    # ══════════════════════════════════════════════
+    #  Language dropdown (EN / HI / etc.)
+    # ══════════════════════════════════════════════
+
+    BTN_LANG_DROPDOWN = {
+        "xpath": "//button[.//*[contains(@class,'lucide-chevron-down')]]",
+        "css": "button:has(.lucide-chevron-down)",
+    }
+
+    @allure.step("Open language dropdown")
+    def open_language_dropdown(self):
+        self.engine.click(self.BTN_LANG_DROPDOWN, timeout=10000)
+        self.wait(800)
+
+    @allure.step("Get available languages in dropdown")
+    def get_available_languages(self) -> list:
+        """Returns the visible language choices inside the open dropdown.
+        Must be called AFTER open_language_dropdown()."""
+        try:
+            langs = self.page.evaluate("""() => {
+                // Look for any open list items / menu options below the
+                // language button. Heuristic: recently-visible list items
+                // whose text is short (language names are <= 15 chars).
+                const items = document.querySelectorAll(
+                    'div[role="menu"] button, ul[role="listbox"] li, div[class*="dropdown"] button, div[class*="menu"] button'
+                );
+                const out = [];
+                for (const el of items) {
+                    if (el.offsetParent === null) continue;
+                    const t = (el.innerText || '').trim();
+                    if (t && t.length <= 20 && !out.includes(t)) out.push(t);
+                }
+                return out;
+            }""")
+            return langs or []
+        except Exception:
+            return []
+
+    @allure.step("Select language: {name}")
+    def select_language(self, name: str):
+        """Click the language option with the given visible text.
+        Dropdown must already be open."""
+        self.page.get_by_text(name, exact=False).first.click(timeout=8000)
+        self.wait(1000)
+
+    @allure.step("Get current language label (e.g. 'EN')")
+    def get_current_language_label(self) -> str:
+        try:
+            btn = self.engine.find(self.BTN_LANG_DROPDOWN, timeout=5000)
+            return btn.inner_text().strip()
+        except Exception:
+            return ""
+
+    # ══════════════════════════════════════════════
     #  ACTIONS — Netbanking
     # ══════════════════════════════════════════════
 
@@ -243,15 +464,64 @@ class CheckoutPage(BasePage):
         self.engine.fill(self.INPUT_SEARCH_BANK, query, timeout=20000)
         self.wait(2000)
 
+    @allure.step("Select Karur Vysya Bank")
+    def select_karur_vysya(self):
+        self.engine.click(self.IMG_KARUR_VYSYA, timeout=20000)
+        self.wait(1000)
+
+    @allure.step("Select Bank of Baroda Net Banking Corporate")
+    def select_bob_corporate(self):
+        self.engine.click(self.IMG_BOB_CORPORATE, timeout=20000)
+        self.wait(1000)
+
+    @allure.step("Select Bank of Baroda Net Banking Retail")
+    def select_bob_retail(self):
+        self.engine.click(self.IMG_BOB_RETAIL, timeout=20000)
+        self.wait(1000)
+
     @allure.step("Select Equitas Bank")
     def select_equitas_bank(self):
         self.engine.click(self.IMG_EQUITAS_BANK, timeout=20000)
+        self.wait(1000)
+
+    @allure.step("Select Indian Overseas Bank")
+    def select_indian_overseas(self):
+        self.engine.click(self.IMG_INDIAN_OVERSEAS, timeout=20000)
+        self.wait(1000)
+
+    @allure.step("Select State Bank of India")
+    def select_sbi(self):
+        self.engine.click(self.IMG_SBI, timeout=20000)
+        self.wait(1000)
+
+    @allure.step("Select IDFC FIRST Bank")
+    def select_idfc_bank(self):
+        self.engine.click(self.IMG_IDFC_BANK, timeout=20000)
         self.wait(1000)
 
     @allure.step("Click Show all banks")
     def click_show_all_banks(self):
         self.page.locator("button", has_text="Show all banks").first.click()
         self.wait(2000)
+
+    @allure.step("Click Hide all banks")
+    def click_hide_all_banks(self):
+        self.engine.click(self.BTN_HIDE_ALL_BANKS, timeout=10000)
+        self.wait(1000)
+
+    @allure.step("Select bank from full list: {bank_name}")
+    def select_bank_from_list(self, bank_name: str):
+        """Click a bank row in the expanded 'Show all banks' list.
+        The row is a <button> containing a <span> with the bank name.
+        Matched by visible text so both normal and highlighted (bg-blue-50)
+        states resolve to the same locator."""
+        self.page.locator("button").filter(has_text=bank_name).first.click()
+        self.wait(800)
+
+    @allure.step("Click Cancel on bank gateway dialog")
+    def click_cancel(self):
+        self.engine.click(self.BTN_CANCEL, timeout=10000)
+        self.wait(1000)
 
     # ══════════════════════════════════════════════
     #  ACTIONS — Wallets
@@ -301,10 +571,59 @@ class CheckoutPage(BasePage):
         self.engine.click(self.BTN_CASH, timeout=10000)
         self.wait(1000)
 
+    @allure.step("Select RTGS option")
+    def select_rtgs(self):
+        self.engine.click(self.BTN_RTGS, timeout=10000)
+        self.wait(1000)
+
+    @allure.step("Select IMPS option")
+    def select_imps(self):
+        self.engine.click(self.BTN_IMPS, timeout=10000)
+        self.wait(1000)
+
     @allure.step("Select Bank Of India")
     def select_bank_of_india(self):
         self.engine.click(self.IMG_BANK_OF_INDIA, timeout=10000)
         self.wait(1000)
+
+    @allure.step("Select Bank of India Retail")
+    def select_bank_of_india_retail(self):
+        self.engine.click(self.IMG_BANK_OF_INDIA_RETAIL, timeout=10000)
+        self.wait(1000)
+
+    @allure.step("Select Airtel Bank")
+    def select_airtel_bank(self):
+        self.engine.click(self.IMG_AIRTEL_BANK, timeout=10000)
+        self.wait(1000)
+
+    @allure.step("Select FINO Bank")
+    def select_fino_bank(self):
+        self.engine.click(self.IMG_FINO_BANK, timeout=10000)
+        self.wait(1000)
+
+    @allure.step("Select ICICI Bank")
+    def select_icici_bank(self):
+        self.engine.click(self.IMG_ICICI_BANK, timeout=10000)
+        self.wait(1000)
+
+    @allure.step("Select IDFC First Bank RTGS")
+    def select_idfc_first_rtgs(self):
+        self.engine.click(self.IMG_IDFC_FIRST_RTGS, timeout=10000)
+        self.wait(1000)
+
+    @allure.step("Select IMPS bank by badge: {badge}")
+    def select_imps_bank_by_badge(self, badge: str):
+        """IMPS banks render a 2-letter initials badge (e.g., 'SA').
+        Target the button whose uppercase badge div matches."""
+        self.page.locator(
+            f"button:has(div.uppercase.font-bold:has-text('{badge}'))"
+        ).first.click()
+        self.wait(1000)
+
+    @allure.step("Click 'Pay at bank'")
+    def click_pay_at_bank(self):
+        self.engine.click(self.BTN_PAY_AT_BANK, timeout=10000)
+        self.wait(2000)
 
     # ══════════════════════════════════════════════
     #  ACTIONS — Page
@@ -362,6 +681,25 @@ class CheckoutPage(BasePage):
         except Exception:
             return False
 
+    @allure.step("Check if challan / bank-gateway page opened after Pay at bank")
+    def is_challan_opened(self, timeout_ms: int = 8000) -> bool:
+        """Heuristic: after 'Pay at bank', we either (a) navigate off the
+        checkout page to a gateway/challan URL, or (b) a challan panel
+        renders on the same page with keywords like 'challan', 'reference',
+        'download', 'payment instruction', etc."""
+        self.wait(timeout_ms)
+        url = self.page.url.lower()
+        if "checkout" not in url and "configure" not in url and "about:blank" not in url:
+            return True
+        try:
+            indicator = self.page.locator(
+                "text=/challan|download.*challan|reference.*no|payment.*instruction|bank.*details/i"
+            ).first
+            indicator.wait_for(state="visible", timeout=3000)
+            return True
+        except Exception:
+            return False
+
     @allure.step("Get current page URL")
     def get_current_url(self) -> str:
         return self.page.url
@@ -400,15 +738,160 @@ class CheckoutPage(BasePage):
                 pass
         return names
 
+    @allure.step("Discover visible netbanking popular banks (dynamic per client)")
+    def get_visible_netbanking_popular_alts(self) -> list:
+        """Call AFTER self.select_netbanking() and a brief wait.
+        Returns alt attributes for every bank image in the popular-banks
+        grid — only real banks, mode tabs filtered out."""
+        try:
+            self.page.evaluate("""() => {
+                const el = document.querySelector('div.flex-1.p-4.overflow-y-auto');
+                if (el) { el.scrollTo({top: 0}); }
+            }""")
+            self.wait(400)
+            alts = self.page.evaluate("""() => {
+                const MODE_NAMES = ['upi','card','netbanking','net banking',
+                                    'offline','wallet','wallets','scan qr','generate qr'];
+                const grids = document.querySelectorAll(
+                    'div[class*="grid-cols-3"], div[class*="grid-cols-4"]'
+                );
+                const out = [];
+                for (const grid of grids) {
+                    if (grid.offsetParent === null) continue;
+                    for (const btn of grid.querySelectorAll('button')) {
+                        if (btn.offsetParent === null) continue;
+                        const img = btn.querySelector('img');
+                        if (!img) continue;
+                        const alt = (img.alt || '').trim();
+                        if (!alt) continue;
+                        const low = alt.toLowerCase();
+                        if (MODE_NAMES.some(m => low === m || low.startsWith(m + ' '))) continue;
+                        if (!out.includes(alt)) out.push(alt);
+                    }
+                }
+                return out;
+            }""")
+            return alts or []
+        except Exception:
+            return []
+
+    @allure.step("Discover visible offline banks on current sub-tab (Cash / RTGS)")
+    def get_visible_offline_bank_alts(self) -> list:
+        """Call AFTER selecting an offline sub-tab (Cash or RTGS).
+        Returns image-alt identifiers for each bank shown."""
+        try:
+            alts = self.page.evaluate("""() => {
+                const MODE_NAMES = ['upi','card','netbanking','net banking',
+                                    'offline','wallet','wallets','cash','rtgs','imps','neft'];
+                const grids = document.querySelectorAll(
+                    'div[class*="grid-cols-3"], div[class*="grid-cols-4"]'
+                );
+                const out = [];
+                for (const grid of grids) {
+                    if (grid.offsetParent === null) continue;
+                    for (const btn of grid.querySelectorAll('button')) {
+                        if (btn.offsetParent === null) continue;
+                        const img = btn.querySelector('img');
+                        if (!img) continue;
+                        const alt = (img.alt || '').trim();
+                        if (!alt) continue;
+                        const low = alt.toLowerCase();
+                        if (MODE_NAMES.some(m => low === m || low.startsWith(m + ' '))) continue;
+                        if (!out.includes(alt)) out.push(alt);
+                    }
+                }
+                return out;
+            }""")
+            return alts or []
+        except Exception:
+            return []
+
+    @allure.step("Discover visible IMPS banks (badge-based — e.g. 'SA')")
+    def get_visible_offline_imps_badges(self) -> list:
+        """IMPS banks are often rendered with 2-letter initials badges
+        (e.g. 'SA' for SabPaisa) instead of icons. Returns the badge text."""
+        try:
+            badges = self.page.evaluate("""() => {
+                const badges = document.querySelectorAll(
+                    'div.flex-1.p-4.overflow-y-auto div.uppercase.font-bold'
+                );
+                const out = [];
+                for (const b of badges) {
+                    if (b.offsetParent === null) continue;
+                    const t = (b.innerText || '').trim();
+                    if (t && !out.includes(t)) out.push(t);
+                }
+                return out;
+            }""")
+            return badges or []
+        except Exception:
+            return []
+
+    @allure.step("Discover visible wallets (dynamic — whatever the current client offers)")
+    def get_visible_wallet_alts(self) -> list:
+        """After clicking Wallets tab, returns a list of identifiers — one
+        per wallet button in the grid. Works per-client: 4 for CHIN36,
+        7 for another, 9 for another — no hardcoded list.
+
+        Uses page.evaluate() to read the DOM in the browser directly,
+        avoiding Playwright auto-wait hangs. Also scrolls the panel
+        top → bottom → top first so any lazy-mounted buttons render."""
+        try:
+            # Scroll reveal (JS side, no auto-wait)
+            self.page.evaluate("""() => {
+                const el = document.querySelector('div.flex-1.p-4.overflow-y-auto');
+                if (!el) return;
+                el.scrollTo({top: el.scrollHeight});
+            }""")
+            self.wait(500)
+            self.page.evaluate("""() => {
+                const el = document.querySelector('div.flex-1.p-4.overflow-y-auto');
+                if (!el) return;
+                el.scrollTo({top: 0});
+            }""")
+            self.wait(300)
+
+            # Two-stage filter:
+            #  1. Scope to the WALLET GRID only (div with grid-cols-* class).
+            #     Payment-mode tabs use a vertical layout, NOT grid-cols.
+            #  2. Blacklist obvious mode names as a safety net in case
+            #     another grid-cols div exists elsewhere.
+            alts = self.page.evaluate("""() => {
+                const MODE_NAMES = [
+                    'upi', 'card', 'netbanking', 'net banking',
+                    'offline', 'wallet', 'wallets',
+                    'scan qr', 'generate qr'
+                ];
+                // Find grid containers (wallets + banks use grid-cols-3/4)
+                const grids = document.querySelectorAll(
+                    'div[class*="grid-cols-3"], div[class*="grid-cols-4"]'
+                );
+                const out = [];
+                for (const grid of grids) {
+                    // Skip hidden grids
+                    if (grid.offsetParent === null) continue;
+                    const buttons = grid.querySelectorAll('button');
+                    for (const btn of buttons) {
+                        if (btn.offsetParent === null) continue;
+                        const img = btn.querySelector('img');
+                        if (!img) continue;
+                        const alt = (img.alt || '').trim();
+                        if (!alt) continue;
+                        // Skip if alt matches a known payment-mode name
+                        const low = alt.toLowerCase();
+                        if (MODE_NAMES.some(m => low === m || low.startsWith(m + ' '))) continue;
+                        if (!out.includes(alt)) out.push(alt);
+                    }
+                }
+                return out;
+            }""")
+            return alts or []
+        except Exception:
+            return []
+
     # ══════════════════════════════════════════════
     #  COMPOSED WORKFLOWS
     # ══════════════════════════════════════════════
-
-    @allure.step("Complete UPI QR flow")
-    def complete_upi_qr_flow(self):
-        self.wait_for_checkout_load()
-        self.select_upi()
-        self.click_generate_qr()
 
     @allure.step("Complete Cards flow")
     def complete_cards_flow(self, number, holder, expiry, cvv):
@@ -418,30 +901,3 @@ class CheckoutPage(BasePage):
         self.enter_card_holder(holder)
         self.enter_card_expiry(expiry)
         self.enter_card_cvv(cvv)
-
-    @allure.step("Complete Netbanking flow with Pay")
-    def complete_netbanking_flow(self, bank_search="eq"):
-        self.wait_for_checkout_load()
-        self.select_netbanking()
-        self.search_bank(bank_search)
-        self.select_equitas_bank()
-        self.click_pay()
-
-    @allure.step("Complete Wallet PhonePe flow with Pay")
-    def complete_wallet_phonepe_flow(self):
-        self.wait_for_checkout_load()
-        self.select_wallets()
-        self.select_phonepe()
-        self.click_pay()
-
-    @allure.step("Complete Offline Cash flow")
-    def complete_offline_cash_flow(self):
-        self.wait_for_checkout_load()
-        self.select_offline()
-        self.select_cash()
-
-    @allure.step("Complete Offline Bank Transfer flow")
-    def complete_offline_bank_flow(self):
-        self.wait_for_checkout_load()
-        self.select_offline()
-        self.select_bank_of_india()

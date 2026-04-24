@@ -1,13 +1,28 @@
+# Python
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# IDE
 .idea/
+.vscode/
+
+# Virtualenv
 venv/
+env/
+.venv/
+
+# Auto-generated test output — NEVER commit these
 allure-results/
 allure-report/
 reports/allure-results/
 reports/allure-report/
+reports/allure-results-*/
+reports/allure-report-*/
+reports/*.xlsx
 screenshots/*.png
+_handover_tmp.html
+
+# Misc
 *.log
 ~$*
-*.xlsx

@@ -1,7 +1,6 @@
 {
     "base_url": "https://dgrdfsk1dqpwl.cloudfront.net/client-test/configure.html",
-    "environment": "Production",
-    "browser": "chromium",
+    "environment": "Staging",
     "headless": false,
     "slow_mo": 500,
     "viewport": {

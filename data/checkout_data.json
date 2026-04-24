@@ -1,11 +1,11 @@
 {
-    "merchant_id": "AJME",
+    "merchant_id": "CHIN36",
     "customer": {
         "customer_id": "Test",
         "name": "test",
         "email": "test@gmail.com",
         "phone": "6477834567",
-        "amount": "1",
+        "amount": "45",
         "description": "Test Product"
     },
     "payment": {
