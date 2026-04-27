@@ -1441,7 +1441,10 @@ class TestR10_CHIN36:
         co.click_pay()
         co.wait(5000)
         allure.attach(f"URL after Pay: {page.url}", name="Bank_Gateway_URL", attachment_type=allure.attachment_type.TEXT)
-        assert "checkout" not in page.url or "sabpaisa" in page.url, "Should navigate to bank gateway"
+        # Bank gateway URLs may contain "checkout" (e.g. my.idfcfirst.bank.in/ecom/checkout).
+        # The reliable check is that we left SabPaisa's domain.
+        assert "staging-sb-checkout.sabpaisa.in" not in page.url, \
+            f"Should navigate to bank gateway (URL still on SabPaisa: {page.url})"
         # Cancel on bank page and go back
         try:
             page.locator("text=Cancel").first.click(timeout=10000)
@@ -1563,7 +1566,12 @@ class TestR10_SUBI79:
         co.click_pay()
         co.wait(5000)
         allure.attach(f"URL after Pay: {page.url}", name="Bank_Gateway_URL", attachment_type=allure.attachment_type.TEXT)
-        assert "checkout" not in page.url or "sabpaisa" in page.url, "Should navigate to bank gateway"
+        # Verify we left SabPaisa's domain (i.e. landed on the bank's gateway).
+        # NOTE: bank gateway URLs may also contain the word "checkout"
+        # (e.g. my.idfcfirst.bank.in/ecom/checkout) — that's correct, so we
+        # check the host, not the substring "checkout".
+        assert "staging-sb-checkout.sabpaisa.in" not in page.url, \
+            f"Should navigate to bank gateway (URL still on SabPaisa: {page.url})"
         # Cancel on bank page and go back
         try:
             page.locator("text=Cancel").first.click(timeout=10000)
