@@ -650,9 +650,19 @@ class CheckoutPage(BasePage):
         return self.engine.is_visible(self.INPUT_SEARCH_BANK, timeout=5000)
 
     @allure.step("Check if QR code is visible")
-    def is_qr_visible(self) -> bool:
+    def is_qr_visible(self, timeout: int = 30000) -> bool:
+        """The UPI QR can take 15-25 seconds to render (it has a generation
+        timer / spinner first). Wait up to `timeout` ms (default 30s) for any
+        QR element to appear: <canvas>, <img alt='QR'>, <svg class='qr'>,
+        <div class*='qr'>, or any element with 'qr-code' / 'qrcode' class."""
         try:
-            self.page.locator("canvas, img[alt*='QR'], svg[class*='qr'], [class*='qr']").first.wait_for(state="visible", timeout=10000)
+            self.page.locator(
+                "canvas, "
+                "img[alt*='QR'], img[alt*='qr'], "
+                "svg[class*='qr'], svg[class*='QR'], "
+                "[class*='qr-code'], [class*='qrcode'], [class*='QrCode'], "
+                "[class*='qr']"
+            ).first.wait_for(state="visible", timeout=timeout)
             return True
         except Exception:
             return False

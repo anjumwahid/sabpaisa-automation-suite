@@ -1339,8 +1339,8 @@ class TestR10_CHIN36:
         co = goto_checkout_for_client(page, "CHIN36")
         co.select_upi()
         co.click_generate_qr()
-        co.wait(5000)
-        assert co.is_qr_visible(), "QR code should be generated"
+        # is_qr_visible waits up to 30s for the QR to render past its timer
+        assert co.is_qr_visible(timeout=30000), "QR code should be generated"
 
     @allure.title("CHIN36: 2. Debit Card → Pay")
     @allure.severity(allure.severity_level.CRITICAL)
@@ -1521,8 +1521,8 @@ class TestR10_SUBI79:
         co = goto_checkout_for_client(page, "SUBI79")
         co.select_upi()
         co.click_generate_qr()
-        co.wait(5000)
-        assert co.is_qr_visible(), "QR code should be generated"
+        # is_qr_visible waits up to 30s for the QR to render past its timer
+        assert co.is_qr_visible(timeout=30000), "QR code should be generated"
 
     @allure.title("SUBI79: Credit Card → Pay")
     @allure.severity(allure.severity_level.CRITICAL)
