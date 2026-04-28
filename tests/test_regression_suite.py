@@ -289,6 +289,7 @@ class TestR2CustomerForm:
 
 @allure.epic("SabPaisa Regression")
 @allure.feature("R3 - UPI Payment")
+@pytest.mark.upi
 class TestR3UPI:
 
     @allure.title("R3.1: Select UPI + Pay visible")
@@ -313,6 +314,7 @@ class TestR3UPI:
 
 @allure.epic("SabPaisa Regression")
 @allure.feature("R4 - Card Payment")
+@pytest.mark.cards
 class TestR4Cards:
 
     @allure.title("R4.1: Card form visible")
@@ -359,6 +361,7 @@ class TestR4Cards:
 
 @allure.epic("SabPaisa Regression")
 @allure.feature("R5 - Netbanking")
+@pytest.mark.netbanking
 class TestR5Netbanking:
 
     @allure.title("R5.1: Search Equitas Bank")
@@ -696,6 +699,7 @@ class TestR5Netbanking:
 
 @allure.epic("SabPaisa Regression")
 @allure.feature("R6 - Wallets")
+@pytest.mark.wallets
 class TestR6Wallets:
 
     @allure.title("R6.1: Wallet grid visible")
@@ -844,6 +848,7 @@ class TestR6Wallets:
 
 @allure.epic("SabPaisa Regression")
 @allure.feature("R7 - Offline Payment")
+@pytest.mark.offline
 class TestR7Offline:
 
     @allure.title("R7.1: Offline options visible")
@@ -1098,6 +1103,8 @@ class TestR8Switching:
 
 @allure.epic("SabPaisa Regression")
 @allure.feature("R11 - Fee Forward")
+@pytest.mark.feeforward
+@pytest.mark.critical
 class TestR11FeeForward:
 
     @allure.title("R11.1: CHIN36 (Fee Forward = YES) — Convenience Charges VISIBLE on checkout")
@@ -1161,6 +1168,8 @@ class TestR11FeeForward:
 
 @allure.epic("SabPaisa Regression")
 @allure.feature("R12 - Fetch Validation")
+@pytest.mark.fetch
+@pytest.mark.critical
 class TestR12FetchValidation:
 
     @allure.title("R12.1: CHIN36 — valid Fetch → success indicator + API URL populated + correct client name")
@@ -1241,6 +1250,7 @@ class TestR12FetchValidation:
 
 @allure.epic("SabPaisa Regression")
 @allure.feature("R13 - Language Dropdown")
+@pytest.mark.language
 class TestR13Language:
 
     @allure.title("R13.1: Language dropdown opens and lists options")
@@ -1330,6 +1340,9 @@ class TestR13Language:
 
 @allure.epic("SabPaisa Regression")
 @allure.feature("R10 - CHIN36 E2E")
+@pytest.mark.chin36
+@pytest.mark.e2e
+@pytest.mark.regression
 class TestR10_CHIN36:
     """CHIN36 Staging: fresh session per mode with assertions."""
 
@@ -1512,6 +1525,9 @@ class TestR10_CHIN36:
 
 @allure.epic("SabPaisa Regression")
 @allure.feature("R10 - SUBI79 E2E")
+@pytest.mark.subi79
+@pytest.mark.e2e
+@pytest.mark.regression
 class TestR10_SUBI79:
     """SUBI79 Staging: fresh session per mode with assertions."""
 

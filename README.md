@@ -1,5 +1,13 @@
 # SabPaisa Payment Gateway — Automation Test Suite
 
+[![Tests](https://img.shields.io/badge/tests-68-brightgreen)](tests/test_regression_suite.py)
+[![Python](https://img.shields.io/badge/python-3.11-blue)](https://www.python.org/)
+[![Playwright](https://img.shields.io/badge/playwright-1.49.1-2EAD33)](https://playwright.dev/python/)
+[![Pytest](https://img.shields.io/badge/pytest-8.3.4-009FE3)](https://docs.pytest.org/)
+[![Allure](https://img.shields.io/badge/allure-2.34.1-FF6900)](https://allurereport.org/)
+[![Docker](https://img.shields.io/badge/docker-ready-2496ED)](Dockerfile)
+[![License](https://img.shields.io/badge/license-internal-lightgrey)](.)
+
 ## About
 Automated regression test suite for the **SabPaisa Payment Gateway** checkout flow.
 Built with **Playwright + Python**, Hybrid Page Object Model, Allure reports, and a
@@ -107,6 +115,35 @@ Pick your goal below. All commands run from `playwright_checkout_project/`.
 | Override settings on the CLI (env / headless / …) | **§ 9** |
 
 ---
+
+### § 0 — By Marker (smoke / critical / mode)
+
+Use pytest markers to filter tests by category:
+
+```bash
+# Smoke (under 5 min, must-pass before push)
+pytest -m smoke --headed --slowmo 500
+
+# Critical (release-blocking)
+pytest -m critical --headed --slowmo 500
+
+# Full regression
+pytest -m regression --alluredir=reports/allure-results
+
+# Combine markers (logical AND/OR)
+pytest -m "critical and not slow" --headed
+pytest -m "netbanking or wallets" --headed
+pytest -m "chin36 and regression" --headed
+
+# Only dynamic per-bank/per-wallet flows
+pytest -m dynamic --headed --slowmo 500
+
+# Only negative tests
+pytest -m negative --headed
+```
+
+**All available markers**: smoke, critical, regression, slow, chin36, subi79, feeforward, fetch, language, netbanking, wallets, offline, upi, cards, negative, e2e, dynamic.
+See `pytest.ini` for full list and descriptions.
 
 ### § 1 — Particular Mode (one mode only)
 

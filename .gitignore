@@ -26,3 +26,10 @@ _handover_tmp.html
 # Misc
 *.log
 ~$*
+
+# Secrets — never commit
+.env
+.env.local
+.env.*.local
+*.pem
+secrets/
