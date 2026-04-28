@@ -21,7 +21,7 @@ import os
 import allure
 import pytest
 from pages import ConfigurePage, CustomerPage, CheckoutPage
-from data.data_provider import get_checkout_data, get_customer_data, get_card_data, get_payment_data
+from data.data_provider import get_checkout_data, get_customer_data, get_card_data
 
 
 # ══════════════════════════════════════════════
@@ -48,7 +48,6 @@ def _d():
             "merchant": get_checkout_data()["merchant_id"],
             "customer": get_customer_data(),
             "card": get_card_data(),
-            "payment": get_payment_data(),
         }
     return DATA
 

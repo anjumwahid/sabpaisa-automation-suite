@@ -114,7 +114,10 @@ class CheckoutPage(BasePage):
     }
 
     # -- Show/Hide all banks toggle --
-    BTN_SHOW_ALL_BANKS = {"text": "Show all banks"}
+    BTN_SHOW_ALL_BANKS = {
+        "xpath": "//button[normalize-space()='Show all banks']",
+        "text": "Show all banks",
+    }
 
     BTN_HIDE_ALL_BANKS = {
         "xpath": "//button[normalize-space()='Hide all banks']",
@@ -501,7 +504,7 @@ class CheckoutPage(BasePage):
 
     @allure.step("Click Show all banks")
     def click_show_all_banks(self):
-        self.page.locator("button", has_text="Show all banks").first.click()
+        self.engine.click(self.BTN_SHOW_ALL_BANKS, timeout=10000)
         self.wait(2000)
 
     @allure.step("Click Hide all banks")
