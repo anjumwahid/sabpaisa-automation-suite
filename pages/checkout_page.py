@@ -342,29 +342,37 @@ class CheckoutPage(BasePage):
 
     def _read_amount_for_label(self, label: str) -> str:
         """Robust label→amount extractor for the checkout summary card.
-        Strategy:
-          1. Find an element whose **direct text** equals the label exactly
-             (avoids matching huge ancestors that contain the whole card text).
-          2. From that label node, walk up to the row container (a flex/grid
-             parent), then read its inner_text and return the LAST numeric
-             token in the row — that's the amount, never the label."""
+
+        Different rows on the SabPaisa card use different DOM structures:
+          - Order Amount / Convenience Charges:  label + amount are siblings
+            inside the same parent → 1 level up gets the row text.
+          - Total Amount: label and amount are in DIFFERENT sibling divs
+            inside a wrapper → may need 2-3 levels up to reach a container
+            that holds both.
+
+        Strategy: locate label by EXACT text, then walk up parents until we
+        find one whose inner_text contains a numeric token. The amount is
+        the LAST number in that text (label never has digits)."""
         import re
         try:
-            # Match elements whose direct (text-only) content is exactly the label
             label_node = self.page.locator(
                 f"xpath=//*[normalize-space(text())='{label}']"
             ).first
             label_node.wait_for(state="visible", timeout=5000)
 
-            # Get the immediate parent row (label + amount usually share a parent)
-            row = label_node.locator("xpath=..").first
-            row_text = row.inner_text().strip()
-
-            # The amount is the LAST numeric token in the row
-            matches = re.findall(r"[\d,]+\.?\d*", row_text)
-            if matches:
-                return f"{label}  {matches[-1]}"
-            return row_text
+            # Walk up to 5 levels until we find a container with a number
+            for level in range(1, 6):
+                up_xpath = "/".join([".."] * level)
+                try:
+                    container = label_node.locator(f"xpath={up_xpath}")
+                    text = container.inner_text().strip()
+                    matches = re.findall(r"[\d,]+\.?\d*", text)
+                    if matches:
+                        # The last number is the amount (label never has digits)
+                        return f"{label}  {matches[-1]}"
+                except Exception:
+                    continue
+            return ""
         except Exception:
             return ""
 
