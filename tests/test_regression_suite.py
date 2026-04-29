@@ -614,6 +614,12 @@ class TestR5Netbanking:
         AND page body has > 50 chars (i.e. real bank login rendered)."""
         client = _dynamic_client()
         log = []
+        # Optional filter: BANK_FILTER=ICICI runs only banks whose name
+        # contains "ICICI" (case-insensitive). Empty string = no filter.
+        bank_filter = os.environ.get("BANK_FILTER", "").strip().lower()
+
+        def _matches_filter(bank_name):
+            return (not bank_filter) or (bank_filter in bank_name.lower())
 
         def _verify_bank_login_loaded(co_obj, before_url):
             """Returns (status, message). Strict bank-login verification."""
@@ -649,7 +655,11 @@ class TestR5Netbanking:
             attachment_type=allure.attachment_type.TEXT,
         )
         log.append(f"=== PASS 1: POPULAR BANKS ({len(popular)}) ===")
+        if bank_filter:
+            log.append(f"(BANK_FILTER='{bank_filter}' active — only matching banks will run)")
         for idx, alt in enumerate(popular, 1):
+            if not _matches_filter(alt):
+                continue
             safe = alt.replace(" ", "_").replace("/", "_")
             try:
                 co = goto_checkout_for_client(page, client)
@@ -702,6 +712,8 @@ class TestR5Netbanking:
             attachment_type=allure.attachment_type.TEXT,
         )
         for idx, name in enumerate(expanded_subset, 1):
+            if not _matches_filter(name):
+                continue
             safe = name.replace(" ", "_").replace("/", "_").replace("[", "").replace("]", "")
             try:
                 co = goto_checkout_for_client(page, client)
@@ -727,28 +739,32 @@ class TestR5Netbanking:
         # ── PASS 3 — Search "equitas" → select → Pay → verify ──
         log.append("")
         log.append("=== PASS 3: SEARCH (type 'equitas') ===")
-        try:
-            co = goto_checkout_for_client(page, client)
-            co.select_netbanking()
-            co.wait(1500)
-            before = co.get_current_url()
-            co.search_bank("equitas")
-            co.wait(1500)
-            co.screenshot("r5_12_search_equitas_typed")
-            co.select_equitas_bank()
-            co.wait(2000)
-            co.screenshot("r5_12_search_equitas_selected")
-            co.click_pay()
+        run_search = (not bank_filter) or ("equitas" in bank_filter or bank_filter in "equitas")
+        if not run_search:
+            log.append(f"(skipped — BANK_FILTER='{bank_filter}' doesn't match Equitas)")
+        else:
             try:
-                co.page.wait_for_load_state("domcontentloaded", timeout=15000)
-            except Exception:
-                pass
-            co.wait(6000)
-            co.screenshot("r5_12_search_equitas_bank_login")
-            status, msg = _verify_bank_login_loaded(co, before)
-            log.append(f"[{status}] search -> Equitas Bank: {msg}")
-        except Exception as e:
-            log.append(f"[FAIL] search -> Equitas: {str(e)[:100]}")
+                co = goto_checkout_for_client(page, client)
+                co.select_netbanking()
+                co.wait(1500)
+                before = co.get_current_url()
+                co.search_bank("equitas")
+                co.wait(1500)
+                co.screenshot("r5_12_search_equitas_typed")
+                co.select_equitas_bank()
+                co.wait(2000)
+                co.screenshot("r5_12_search_equitas_selected")
+                co.click_pay()
+                try:
+                    co.page.wait_for_load_state("domcontentloaded", timeout=15000)
+                except Exception:
+                    pass
+                co.wait(6000)
+                co.screenshot("r5_12_search_equitas_bank_login")
+                status, msg = _verify_bank_login_loaded(co, before)
+                log.append(f"[{status}] search -> Equitas Bank: {msg}")
+            except Exception as e:
+                log.append(f"[FAIL] search -> Equitas: {str(e)[:100]}")
 
         # ── Final summary ──
         passed = sum(1 for ln in log if ln.startswith("[PASS]"))
