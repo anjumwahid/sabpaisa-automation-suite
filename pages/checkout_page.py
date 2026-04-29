@@ -340,39 +340,45 @@ class CheckoutPage(BasePage):
         except Exception:
             return False
 
-    @allure.step("Get Convenience Charges amount")
-    def get_convenience_charges_amount(self) -> str:
+    def _read_amount_for_label(self, label: str) -> str:
+        """Robust label→amount extractor for the checkout summary card.
+        Strategy:
+          1. Find an element whose **direct text** equals the label exactly
+             (avoids matching huge ancestors that contain the whole card text).
+          2. From that label node, walk up to the row container (a flex/grid
+             parent), then read its inner_text and return the LAST numeric
+             token in the row — that's the amount, never the label."""
+        import re
         try:
-            row = self.page.locator(
-                "xpath=//*[contains(normalize-space(.),'Convenience Charges')]"
-                "/ancestor-or-self::*[self::div or self::li or self::tr][1]"
+            # Match elements whose direct (text-only) content is exactly the label
+            label_node = self.page.locator(
+                f"xpath=//*[normalize-space(text())='{label}']"
             ).first
-            txt = row.inner_text().strip()
-            return txt
+            label_node.wait_for(state="visible", timeout=5000)
+
+            # Get the immediate parent row (label + amount usually share a parent)
+            row = label_node.locator("xpath=..").first
+            row_text = row.inner_text().strip()
+
+            # The amount is the LAST numeric token in the row
+            matches = re.findall(r"[\d,]+\.?\d*", row_text)
+            if matches:
+                return f"{label}  {matches[-1]}"
+            return row_text
         except Exception:
             return ""
+
+    @allure.step("Get Convenience Charges amount")
+    def get_convenience_charges_amount(self) -> str:
+        return self._read_amount_for_label("Convenience Charges")
 
     @allure.step("Get Order Amount value")
     def get_order_amount(self) -> str:
-        try:
-            row = self.page.locator(
-                "xpath=//*[contains(normalize-space(.),'Order Amount')]"
-                "/ancestor-or-self::*[self::div or self::li or self::tr][1]"
-            ).first
-            return row.inner_text().strip()
-        except Exception:
-            return ""
+        return self._read_amount_for_label("Order Amount")
 
     @allure.step("Get Total Amount value")
     def get_total_amount(self) -> str:
-        try:
-            row = self.page.locator(
-                "xpath=//*[contains(normalize-space(.),'Total Amount')]"
-                "/ancestor-or-self::*[self::div or self::li or self::tr][1]"
-            ).first
-            return row.inner_text().strip()
-        except Exception:
-            return ""
+        return self._read_amount_for_label("Total Amount")
 
     @allure.step("Get merchant name shown on checkout summary card")
     def get_merchant_name_on_checkout(self) -> str:
