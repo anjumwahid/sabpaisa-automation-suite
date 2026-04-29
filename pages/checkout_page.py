@@ -344,34 +344,55 @@ class CheckoutPage(BasePage):
         """Robust label→amount extractor for the checkout summary card.
 
         Different rows on the SabPaisa card use different DOM structures:
-          - Order Amount / Convenience Charges:  label + amount are siblings
-            inside the same parent → 1 level up gets the row text.
-          - Total Amount: label and amount are in DIFFERENT sibling divs
-            inside a wrapper → may need 2-3 levels up to reach a container
-            that holds both.
+          - Order Amount / Convenience Charges: label + amount in same row
+          - Total Amount: label and amount in separate sibling divs,
+            often inside a section with a divider above it
 
-        Strategy: locate label by EXACT text, then walk up parents until we
-        find one whose inner_text contains a numeric token. The amount is
-        the LAST number in that text (label never has digits)."""
+        Strategy: parse the entire summary card text, split into lines,
+        find the line containing the label, then look for the amount on
+        either the same line OR the next non-empty line."""
         import re
         try:
-            label_node = self.page.locator(
-                f"xpath=//*[normalize-space(text())='{label}']"
-            ).first
-            label_node.wait_for(state="visible", timeout=5000)
+            # Anchor on "SabPaisa Trusted" (unique to the summary card)
+            # then walk up to a container that holds ALL rows.
+            anchor = self.page.get_by_text("SabPaisa Trusted").first
+            anchor.wait_for(state="visible", timeout=5000)
 
-            # Walk up to 5 levels until we find a container with a number
-            for level in range(1, 6):
-                up_xpath = "/".join([".."] * level)
+            card_text = ""
+            for level in range(2, 8):
+                up = "/".join([".."] * level)
                 try:
-                    container = label_node.locator(f"xpath={up_xpath}")
-                    text = container.inner_text().strip()
-                    matches = re.findall(r"[\d,]+\.?\d*", text)
-                    if matches:
-                        # The last number is the amount (label never has digits)
-                        return f"{label}  {matches[-1]}"
+                    candidate = anchor.locator(f"xpath={up}")
+                    text = candidate.inner_text()
+                    # The right ancestor contains all row labels we care about
+                    if "Order Amount" in text and "Total Amount" in text:
+                        card_text = text
+                        break
                 except Exception:
                     continue
+
+            if not card_text:
+                # Fallback — read the whole body
+                card_text = self.page.locator("body").inner_text()
+
+            # Split into trimmed non-empty lines
+            lines = [ln.strip() for ln in card_text.split("\n") if ln.strip()]
+            number_re = re.compile(r"[\d,]+\.?\d*")
+
+            for i, line in enumerate(lines):
+                if line == label:
+                    # Label alone on its line — amount is on the NEXT line
+                    if i + 1 < len(lines):
+                        nxt = lines[i + 1]
+                        m = number_re.findall(nxt)
+                        if m:
+                            return f"{label}  {m[-1]}"
+                elif line.startswith(label) or label + " " in line or label + " " in line:
+                    # Label + amount on the SAME line (e.g. "Order Amount ₹45")
+                    m = number_re.findall(line)
+                    if m:
+                        return f"{label}  {m[-1]}"
+
             return ""
         except Exception:
             return ""
