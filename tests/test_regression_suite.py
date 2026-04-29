@@ -687,11 +687,16 @@ class TestR5Netbanking:
             expanded_names = []
             log.append(f"[FAIL] discovery: {str(e)[:80]}")
 
-        # Limit to first 5 to keep runtime reasonable; remove [:5] for ALL
-        expanded_subset = (expanded_names or [])[:5]
+        # Test ALL expanded banks. Override via EXPANDED_LIMIT env var if you
+        # want to cap (e.g. EXPANDED_LIMIT=5 for a quick smoke).
+        limit_env = os.environ.get("EXPANDED_LIMIT")
+        if limit_env and limit_env.isdigit():
+            expanded_subset = (expanded_names or [])[: int(limit_env)]
+        else:
+            expanded_subset = expanded_names or []
         allure.attach(
             f"Expanded list discovered ({len(expanded_names)} total, testing "
-            f"first {len(expanded_subset)}):\n  - " +
+            f"{len(expanded_subset)}):\n  - " +
             "\n  - ".join(expanded_subset or ["(none)"]),
             name="P2 Expanded discovered",
             attachment_type=allure.attachment_type.TEXT,
