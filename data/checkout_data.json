@@ -5,7 +5,7 @@
         "name": "test",
         "email": "test@gmail.com",
         "phone": "6477834567",
-        "amount": "45",
+        "amount": "50",
         "description": "Test Product"
     },
     "payment": {

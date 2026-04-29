@@ -5,6 +5,23 @@ All notable changes to the SabPaisa Automation Test Suite.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-04-29
+
+### Added
+- **R5.12** `test_netbanking_complete_flow` — exercises ALL 3 UI access paths
+  in one test: popular grid + show all banks + search ("equitas"). Fresh
+  session per bank with strict bank-login URL verification.
+- **`BANK_FILTER` env var** — run a single bank end-to-end (e.g.
+  `BANK_FILTER=PNB`). Case-insensitive substring match.
+- **`EXPANDED_LIMIT` env var** — cap how many "Show all banks" expanded
+  items get tested (e.g. `EXPANDED_LIMIT=5` for quick smoke).
+
+### Fixed
+- **R11.3 math check** for amount/charges/total — locator was matching
+  the entire summary card and extracting the same number for all three
+  rows. Now uses exact-text label match + line-by-line parsing of the
+  card's inner text. Works for any amount (50, 100, 23000, 99.99…).
+
 ## [2.0.0] - 2026-04-28
 
 ### Added

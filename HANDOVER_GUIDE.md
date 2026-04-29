@@ -257,7 +257,33 @@ These test **every** bank/wallet the client has, fresh session per item:
 pytest tests/test_regression_suite.py -k "per_bank_flow or per_flow" --headed --slowmo 500
 ```
 
-### 7.5 Full regression (all 68 tests)
+### 7.4.1 Test ONE specific bank (e.g. PNB, ICICI, HDFC)
+
+Use the `BANK_FILTER` environment variable in PowerShell:
+
+```powershell
+# Test only PNB end-to-end (~2 min)
+$env:BANK_FILTER="PNB"
+pytest tests/test_regression_suite.py::TestR5Netbanking::test_netbanking_complete_flow --headed --slowmo 500
+```
+
+Other examples:
+- `$env:BANK_FILTER="ICICI"` — runs only ICICI Bank
+- `$env:BANK_FILTER="HDFC"` — runs only HDFC Bank
+- `$env:BANK_FILTER="State Bank"` — runs SBI
+- `$env:BANK_FILTER="Equitas"` — runs Equitas Bank
+- `Remove-Item Env:BANK_FILTER` — reset (run all banks again)
+
+**Easy way — save as `run_one_bank.ps1` in project root:**
+
+```powershell
+$env:BANK_FILTER = "PNB"
+pytest tests/test_regression_suite.py::TestR5Netbanking::test_netbanking_complete_flow --headed --slowmo 500
+```
+
+Then run with `.\run_one_bank.ps1`. To test a different bank, edit the file's bank name and re-run.
+
+### 7.5 Full regression (all 69 tests)
 
 ```bash
 # With visible browser (slow, for review)

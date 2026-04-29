@@ -1,6 +1,6 @@
 # SabPaisa Payment Gateway — Automation Test Suite
 
-[![Tests](https://img.shields.io/badge/tests-68-brightgreen)](tests/test_regression_suite.py)
+[![Tests](https://img.shields.io/badge/tests-69-brightgreen)](tests/test_regression_suite.py)
 [![Python](https://img.shields.io/badge/python-3.11-blue)](https://www.python.org/)
 [![Playwright](https://img.shields.io/badge/playwright-1.49.1-2EAD33)](https://playwright.dev/python/)
 [![Pytest](https://img.shields.io/badge/pytest-8.3.4-009FE3)](https://docs.pytest.org/)
@@ -205,6 +205,47 @@ pytest tests/test_regression_suite.py::TestR7Offline::test_offline_per_bank_flow
 pytest tests/test_regression_suite.py -k "per_bank_flow or per_flow" --headed --slowmo 500
 ```
 
+### § 3b — Netbanking COMPLETE flow (R5.12) — popular + show all + search
+
+`test_netbanking_complete_flow` tests **all 3 UI access paths** with strict bank-login verification:
+- **Pass 1**: every popular bank → fresh session → click → Pay → verify bank login URL
+- **Pass 2**: every "Show all banks" expanded list bank → fresh session → click → Pay → verify
+- **Pass 3**: search "equitas" → click → Pay → verify
+
+```bash
+# All banks (full coverage, ~60 min for CHIN36)
+pytest tests/test_regression_suite.py::TestR5Netbanking::test_netbanking_complete_flow --headed --slowmo 500
+```
+
+**Filter to a single bank** (PowerShell):
+```powershell
+# Run only PNB (~2 min)
+$env:BANK_FILTER="PNB"; pytest tests/test_regression_suite.py::TestR5Netbanking::test_netbanking_complete_flow --headed --slowmo 500
+
+# Run only ICICI
+$env:BANK_FILTER="ICICI"; pytest tests/test_regression_suite.py::TestR5Netbanking::test_netbanking_complete_flow --headed --slowmo 500
+
+# Run only HDFC
+$env:BANK_FILTER="HDFC"; pytest tests/test_regression_suite.py::TestR5Netbanking::test_netbanking_complete_flow --headed --slowmo 500
+
+# Reset filter — run all banks again
+Remove-Item Env:BANK_FILTER
+```
+
+**Cap how many expanded-list banks to test** (PowerShell):
+```powershell
+# Quick smoke — only first 5 expanded banks (~25 min)
+$env:EXPANDED_LIMIT="5"; pytest tests/test_regression_suite.py::TestR5Netbanking::test_netbanking_complete_flow --headed --slowmo 500
+```
+
+**Reusable script** — save as `run_one_bank.ps1` in project root:
+```powershell
+# run_one_bank.ps1 — change BANK_FILTER value to test any bank
+$env:BANK_FILTER = "PNB"
+pytest tests/test_regression_suite.py::TestR5Netbanking::test_netbanking_complete_flow --headed --slowmo 500
+```
+Run with `.\run_one_bank.ps1`.
+
 ---
 
 ### § 4 — Full Regression (all 68 tests)
@@ -395,6 +436,9 @@ Any setting in `config/settings.json` can be overridden with environment variabl
 | `BASE_URL` | (from settings.json) | `BASE_URL=https://...` |
 | `TIMEOUT` | 15000 | `TIMEOUT=30000` |
 | `MERCHANT_ID_OVERRIDE` | (none) | `MERCHANT_ID_OVERRIDE=CHIN36` |
+| `DYNAMIC_CLIENT` | (none) | `DYNAMIC_CLIENT=SUBI79` (overrides client for R5.11/R5.12/R6.3/R7.5/R7.6) |
+| `BANK_FILTER` | (none) | `BANK_FILTER=PNB` (R5.12 only — runs single bank) |
+| `EXPANDED_LIMIT` | (none) | `EXPANDED_LIMIT=5` (R5.12 only — caps expanded-list banks) |
 
 **Bash / Git Bash**:
 ```bash
@@ -483,7 +527,7 @@ Cells: 🟩 green = PASS · 🟥 red = FAIL · ⬜ grey = N/A
 | **R2** | `TestR2CustomerForm` | 5 | Fill fields, empty, invalid email, zero/negative amount |
 | **R3** | `TestR3UPI` | 2 | Select UPI, Generate QR |
 | **R4** | `TestR4Cards` | 5 | Card form, fill, invalid/empty/expired card |
-| **R5** | `TestR5Netbanking` | 10 | Equitas search, show/hide all banks, popular grid, full expanded list, IDFC → Pay → Cancel, **R5.10 recorded walkthrough** |
+| **R5** | `TestR5Netbanking` | 12 | Equitas search, show/hide all banks, popular grid, full expanded list, IDFC → Pay → Cancel, R5.10 recorded walkthrough, **R5.11 dynamic per-bank**, **R5.12 complete flow (popular+show all+search) with BANK_FILTER** |
 | **R6** | `TestR6Wallets` | 2 | Wallet grid, click all wallets (PhonePe / Amazon / MobiKwik / Airtel / FreeCharge / Jio / OLA) |
 | **R7** | `TestR7Offline` | 5 | Cash, RTGS, IMPS; **R7.5 per-bank walkthrough with screenshots + challan verify** |
 | **R8** | `TestR8Switching` | 4 | Switch all modes, rapid switch, card persistence, reload |
@@ -493,7 +537,7 @@ Cells: 🟩 green = PASS · 🟥 red = FAIL · ⬜ grey = N/A
 | **R12** | `TestR12FetchValidation` | 3 | **Fetch click → green indicator / API URL populated; invalid merchant blocked; bypass-fetch detection** |
 | **R13** | `TestR13Language` | 3 | **Checkout language dropdown — open, switch to Hindi, iterate all languages** |
 
-**Total 68 tests, all in `tests/test_regression_suite.py`.**
+**Total 69 tests, all in `tests/test_regression_suite.py`.**
 
 ### Dynamic per-bank/per-wallet flows (the R6.3 pattern)
 
