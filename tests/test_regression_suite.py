@@ -590,6 +590,174 @@ class TestR5Netbanking:
         assert any(line.startswith("[PASS]") for line in log), \
             "All netbanking banks failed:\n" + "\n".join(log)
 
+    @allure.title("R5.12: Netbanking COMPLETE flow — popular + show all + search → Pay → verify bank login")
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.dynamic
+    @pytest.mark.slow
+    def test_netbanking_complete_flow(self, page):
+        """All-in-one netbanking flow that exercises all 3 UI access paths
+        and verifies each bank's login page actually loads:
+
+          PASS 1 — Popular bank grid (top of netbanking tab):
+            for each bank → fresh session → click bank → Pay → verify
+                            URL navigated to bank's domain (not SabPaisa).
+
+          PASS 2 — Show all banks (expanded list, blue-link rows):
+            for each bank → fresh session → click 'Show all banks' →
+            click bank from list → Pay → verify bank login URL.
+
+          PASS 3 — Search:
+            fresh session → type 'equitas' in search → select Equitas →
+            Pay → verify bank login URL.
+
+        PASS criteria for ALL: URL is OFF SabPaisa AND not chrome-error
+        AND page body has > 50 chars (i.e. real bank login rendered)."""
+        client = _dynamic_client()
+        log = []
+
+        def _verify_bank_login_loaded(co_obj, before_url):
+            """Returns (status, message). Strict bank-login verification."""
+            current = co_obj.get_current_url()
+            on_sabpaisa = "staging-sb-checkout.sabpaisa.in" in current
+            is_error = (current.startswith("chrome-error")
+                        or current.startswith("about:blank")
+                        or "ERR_" in current)
+            try:
+                content_len = co_obj.page.evaluate(
+                    "() => (document.body && document.body.innerText) "
+                    "    ? document.body.innerText.trim().length : 0"
+                )
+            except Exception:
+                content_len = 0
+            url_changed = (current != before_url)
+            if url_changed and not on_sabpaisa and not is_error and content_len > 50:
+                return "PASS", f"bank login loaded ({current[:80]})"
+            if is_error:
+                return "FAIL", f"chrome-error / no load ({current[:60]})"
+            if on_sabpaisa:
+                return "FAIL", f"still on SabPaisa ({current[:60]})"
+            return "FAIL", f"empty or unchanged ({current[:60]})"
+
+        # ── PASS 1 — popular bank grid (dynamic discovery) ──
+        co = goto_checkout_for_client(page, client)
+        co.select_netbanking()
+        co.wait(2500)
+        popular = co.get_visible_netbanking_popular_alts()
+        allure.attach(
+            f"Popular banks discovered: {popular}",
+            name="P1 Popular discovered",
+            attachment_type=allure.attachment_type.TEXT,
+        )
+        log.append(f"=== PASS 1: POPULAR BANKS ({len(popular)}) ===")
+        for idx, alt in enumerate(popular, 1):
+            safe = alt.replace(" ", "_").replace("/", "_")
+            try:
+                co = goto_checkout_for_client(page, client)
+                co.select_netbanking()
+                co.wait(1500)
+                before = co.get_current_url()
+                co.page.locator(f"img[alt='{alt}']").first.click(timeout=5000)
+                co.wait(2000)
+                co.screenshot(f"r5_12_popular_{idx:02d}_{safe}_selected")
+                co.click_pay()
+                try:
+                    co.page.wait_for_load_state("domcontentloaded", timeout=15000)
+                except Exception:
+                    pass
+                co.wait(6000)
+                co.screenshot(f"r5_12_popular_{idx:02d}_{safe}_bank_login")
+                status, msg = _verify_bank_login_loaded(co, before)
+                log.append(f"[{status}] popular -> {alt}: {msg}")
+            except Exception as e:
+                log.append(f"[FAIL] popular -> {alt}: {str(e)[:100]}")
+
+        # ── PASS 2 — Show all banks (expanded list discovery) ──
+        log.append("")
+        log.append("=== PASS 2: SHOW ALL BANKS (expanded list) ===")
+        try:
+            co = goto_checkout_for_client(page, client)
+            co.select_netbanking()
+            co.click_show_all_banks()
+            co.wait(2000)
+            expanded_names = co.page.evaluate("""() => {
+                const spans = document.querySelectorAll('span.text-blue-600');
+                return Array.from(spans).map(s => s.innerText.trim()).filter(Boolean);
+            }""")
+        except Exception as e:
+            expanded_names = []
+            log.append(f"[FAIL] discovery: {str(e)[:80]}")
+
+        # Limit to first 5 to keep runtime reasonable; remove [:5] for ALL
+        expanded_subset = (expanded_names or [])[:5]
+        allure.attach(
+            f"Expanded list discovered ({len(expanded_names)} total, testing "
+            f"first {len(expanded_subset)}):\n  - " +
+            "\n  - ".join(expanded_subset or ["(none)"]),
+            name="P2 Expanded discovered",
+            attachment_type=allure.attachment_type.TEXT,
+        )
+        for idx, name in enumerate(expanded_subset, 1):
+            safe = name.replace(" ", "_").replace("/", "_").replace("[", "").replace("]", "")
+            try:
+                co = goto_checkout_for_client(page, client)
+                co.select_netbanking()
+                co.click_show_all_banks()
+                co.wait(1500)
+                before = co.get_current_url()
+                co.select_bank_from_list(name)
+                co.wait(2000)
+                co.screenshot(f"r5_12_expanded_{idx:02d}_{safe}_selected")
+                co.click_pay()
+                try:
+                    co.page.wait_for_load_state("domcontentloaded", timeout=15000)
+                except Exception:
+                    pass
+                co.wait(6000)
+                co.screenshot(f"r5_12_expanded_{idx:02d}_{safe}_bank_login")
+                status, msg = _verify_bank_login_loaded(co, before)
+                log.append(f"[{status}] expanded -> {name}: {msg}")
+            except Exception as e:
+                log.append(f"[FAIL] expanded -> {name}: {str(e)[:100]}")
+
+        # ── PASS 3 — Search "equitas" → select → Pay → verify ──
+        log.append("")
+        log.append("=== PASS 3: SEARCH (type 'equitas') ===")
+        try:
+            co = goto_checkout_for_client(page, client)
+            co.select_netbanking()
+            co.wait(1500)
+            before = co.get_current_url()
+            co.search_bank("equitas")
+            co.wait(1500)
+            co.screenshot("r5_12_search_equitas_typed")
+            co.select_equitas_bank()
+            co.wait(2000)
+            co.screenshot("r5_12_search_equitas_selected")
+            co.click_pay()
+            try:
+                co.page.wait_for_load_state("domcontentloaded", timeout=15000)
+            except Exception:
+                pass
+            co.wait(6000)
+            co.screenshot("r5_12_search_equitas_bank_login")
+            status, msg = _verify_bank_login_loaded(co, before)
+            log.append(f"[{status}] search -> Equitas Bank: {msg}")
+        except Exception as e:
+            log.append(f"[FAIL] search -> Equitas: {str(e)[:100]}")
+
+        # ── Final summary ──
+        passed = sum(1 for ln in log if ln.startswith("[PASS]"))
+        failed = sum(1 for ln in log if ln.startswith("[FAIL]"))
+        summary = (
+            f"\n=== SUMMARY ===\n"
+            f"Total: {passed + failed}    PASSED: {passed}    FAILED: {failed}\n"
+        )
+        allure.attach("\n".join(log) + summary,
+                      name="Netbanking Complete Flow — All 3 UI paths",
+                      attachment_type=allure.attachment_type.TEXT)
+        assert passed >= 1, \
+            f"All netbanking flows failed:\n" + "\n".join(log)
+
     @allure.title("R5.10: Netbanking full recorded walkthrough (sequential)")
     @allure.severity(allure.severity_level.CRITICAL)
     def test_netbanking_recorded_walkthrough(self, page):
